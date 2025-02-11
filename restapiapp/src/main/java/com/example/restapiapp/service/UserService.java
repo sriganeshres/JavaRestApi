@@ -1,65 +1,63 @@
 package com.example.restapiapp.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 
 import com.example.restapiapp.api.model.User;
 import com.example.restapiapp.api.model.reqUser;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
 @Service
 public class UserService {
 
-    private List<User> users;
+    private final String NODE_SERVICE_URL = "http://localhost:3000/users";
+    private final RestTemplate restTemplate;
 
-    public UserService() {
-        this.users = new ArrayList<>();
-        this.users.add(new User(1, "Sri", 20, "sri@gmail.com"));
-        this.users.add(new User(2, "Ganesh", 30, "Ganesh@gmail.com"));
-        this.users.add(new User(3, "Kumar", 25, "kumar@gmail.com"));
-    }
-
-    public Optional<User> getUser(int id) {
-        Optional<User> optional = Optional.empty();
-        for (User user : users) {
-            if (id == user.getId()) {
-                optional = Optional.of(user);
-                return optional;
-            }
-        }
-        return optional;
-    }
-
-    public Optional<User> makeUser(reqUser requser) {
-        Optional<User> optional = Optional.empty();
-        for (User user : users) {
-            if (requser.getName() == user.getName()) {
-                return optional;
-            }
-        }
-        User user = new User(this.users.size() + 1, requser.getName(), requser.getAge(), requser.getEmail());
-        this.users.add(user);
-        optional = Optional.of(user);
-        return optional;
+    public UserService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     public List<User> getUsers() {
-        return this.users;
+        ResponseEntity<User[]> response = restTemplate.getForEntity(NODE_SERVICE_URL, User[].class);
+        return Arrays.asList(response.getBody());
+    }
+
+    public Optional<User> getUser(int id) {
+        try {
+            ResponseEntity<User> response = restTemplate.getForEntity(NODE_SERVICE_URL + "/" + id, User.class);
+            return Optional.ofNullable(response.getBody());
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<User> makeUser(reqUser requser) {
+        HttpEntity<reqUser> request = new HttpEntity<>(requser);
+        try {
+            ResponseEntity<User> response = restTemplate.postForEntity(NODE_SERVICE_URL, request, User.class);
+            return Optional.ofNullable(response.getBody());
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     public Optional<User> updateUser(int id, reqUser user) {
-        Optional<User> optional = Optional.empty();
-        for (User user1 : users) {
-            if (id == user1.getId()) {
-                user1.setName(user.getName());
-                user1.setAge(user.getAge());
-                user1.setEmail(user.getEmail());
-                optional = Optional.of(user1);
-                return optional;
-            }
+        HttpEntity<reqUser> request = new HttpEntity<>(user);
+        try {
+            ResponseEntity<User> response = restTemplate.exchange(
+                    NODE_SERVICE_URL + "/" + id,
+                    HttpMethod.PUT,
+                    request,
+                    User.class);
+            return Optional.ofNullable(response.getBody());
+        } catch (Exception e) {
+            return Optional.empty();
         }
-        return optional;
     }
 }
